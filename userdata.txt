@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+yum install -y git
+yum install -y python3
+git clone https://github.com/dixonaws/rds-snapshot-automation
+cd rds-snapshot-automation
+pip install -r requirements.txt
+# python3 rds-snapshot-automation.py [rds_instances]
+python3 rds-snapshot-automation.py [rds_instances]
+

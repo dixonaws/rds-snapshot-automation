@@ -15,8 +15,8 @@
             "NoDevice": ""
         }
     ], 
-    "ImageId": "", 
-    "InstanceType": "r4.xlarge", 
+    "ImageId": "ami-b70554c8",
+    "InstanceType": "t2.micro",
     "Ipv6AddressCount": 0, 
     "Ipv6Addresses": [
         {
@@ -24,7 +24,7 @@
         }
     ], 
     "KernelId": "", 
-    "KeyName": "", 
+    "KeyName": "dixonaws",
     "MaxCount": 0, 
     "MinCount": 0, 
     "Monitoring": {
