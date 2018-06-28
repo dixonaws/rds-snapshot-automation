@@ -8,7 +8,7 @@ def logToCloudWatch(CloudWatchLogsClient, aMessage):
 
     try:
         strInstanceId=ec2_metadata.instance_id
-    except TimeoutError:
+    except Exception:
         strInstanceId="testing_non_ec2"
         pass
 
@@ -39,13 +39,41 @@ def logToCloudWatch(CloudWatchLogsClient, aMessage):
 
 
 def main():
-    print("Logging to CloudWatchLogs...")
+    # todo: parse command line arguments from userdata
+
+    print("rds-snapshot-automation, v1.0")
 
     CloudWatchLogsClient = boto3.client('logs', region_name='us-east-1')
 
-    response=logToCloudWatch(CloudWatchLogsClient, 'Started rds-snapshot-automation script')
+    # log when we start the script
+    logToCloudWatch(CloudWatchLogsClient, 'Started rds-snapshot-automation script')
 
-    print(response)
+    # todo: create an RDS snapshot of specified instances
+
+    # log when we're finished
+    logToCloudWatch(CloudWatchLogsClient, 'rds-snapshot-automation script ended, terminating instance...')
+
+    # terminate the instance we're running on
+    try:
+        strInstanceId=ec2_metadata.instance_id
+    except Exception:
+        strInstanceId="testing_non_ec2"
+        pass
+
+    Ec2Client=boto3.client('ec2', region_name='us-east-1')
+
+    try:
+        terminationResponse = Ec2Client.terminate_instances(
+            InstanceIds=[
+                strInstanceId,
+            ],
+            DryRun=True
+        )
+    except Exception:
+        terminationResponse="testing_non_ec2"
+        pass
+
+    print(terminationResponse)
 
 
 main()
