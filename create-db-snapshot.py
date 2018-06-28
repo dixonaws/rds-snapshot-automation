@@ -1,19 +1,37 @@
 import boto3
+import time
 
 def main():
 	print("Logging to CloudWatchLogs...!")
 
-	CloudWatchLogsClient=boto3.client('logs')
+	intTime=int(time.time())
 
+	CloudWatchLogsClient=boto3.client('logs', region_name='us-east-1')
+
+	# get the next token from CloudWatch so that we can put event in the log stream
+	response=CloudWatchLogsClient.describe_log_streams(
+		logGroupName='rds-snapshot-automation-logs'
+	)
+
+	#print(response)
+
+	#strNextToken=response['logStreams'][0]['uploadSequenceToken']
+	#print("Token: " + strNextToken)
+
+	# log to CloudWatch
 	response=CloudWatchLogsClient.put_log_events(
 		logGroupName='rds-snapshot-automation-logs',
 		logStreamName='rds-instance',
 		logEvents=[
-			'timestamp': 123,
-			'message': 'I logged!'
-		],
+			{
+				'timestamp': intTime,
+				'message': 'I logged!'
+			},
+		]
 
-	sequenceToken=''
+		#sequenceToken=strNextToken
+	)
 
+	print(response)
 
 main()
