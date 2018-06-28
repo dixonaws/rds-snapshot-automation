@@ -2,7 +2,7 @@ import boto3
 import time
 
 def main():
-	print("Logging to CloudWatchLogs...!")
+	print("Logging to CloudWatchLogs...")
 
 	intTime=int(time.time())
 
