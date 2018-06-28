@@ -2,10 +2,7 @@ import boto3
 import time
 from ec2_metadata import ec2_metadata
 
-
-def main():
-    print("Logging to CloudWatchLogs...")
-
+def logToCloudWatch(CloudWatchLogsClient, aMessage):
     # cloudwatchlogs expects unix time * 1000, otherwise throws TooOldLogEventsException
     intTime = int(time.time()) * 1000
 
@@ -15,20 +12,15 @@ def main():
         strInstanceId="testing_non_ec2"
         pass
 
-    CloudWatchLogsClient = boto3.client('logs', region_name='us-east-1')
-
     # get the next token from CloudWatch so that we can put event in the log stream
     response = CloudWatchLogsClient.describe_log_streams(
         logGroupName='rds-snapshot-automation-logs'
     )
 
-    # print(response)
-
     strNextToken = response['logStreams'][0]['uploadSequenceToken']
-    print("Token: " + strNextToken)
 
     # log to CloudWatch
-    strMessage='Logged from instanceId ' + strInstanceId
+    strMessage = strInstanceId + ': ' + aMessage
 
     response = CloudWatchLogsClient.put_log_events(
         logGroupName='rds-snapshot-automation-logs',
@@ -42,6 +34,16 @@ def main():
 
         sequenceToken=strNextToken
     )
+
+    return(response)
+
+
+def main():
+    print("Logging to CloudWatchLogs...")
+
+    CloudWatchLogsClient = boto3.client('logs', region_name='us-east-1')
+
+    response=logToCloudWatch(CloudWatchLogsClient, 'Started rds-snapshot-automation script')
 
     print(response)
 
