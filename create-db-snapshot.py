@@ -62,16 +62,12 @@ def main():
 
     Ec2Client=boto3.client('ec2', region_name='us-east-1')
 
-    try:
-        terminationResponse = Ec2Client.terminate_instances(
-            InstanceIds=[
-                strInstanceId,
-            ],
-            DryRun=True
-        )
-    except Exception:
-        terminationResponse="testing_non_ec2"
-        pass
+    terminationResponse = Ec2Client.terminate_instances(
+        InstanceIds=[
+            strInstanceId,
+        ],
+        DryRun=True
+    )
 
     print(terminationResponse)
 
