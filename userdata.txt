@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 
+# install dependencies
 yum install -y git
+yum install -y python-pip
 yum install -y python3
+
+# download the latest rds-backup-automation program from github
 git clone https://github.com/dixonaws/rds-snapshot-automation
 cd rds-snapshot-automation
+
+# install python dependencies
 pip install -r requirements.txt
-# python3 rds-snapshot-automation.py [rds_instances]
-python3 rds-snapshot-automation.py [rds_instances]
+
+# run the program (terminates the instance when finished)
+python3 rds-snapshot-automation.py
 
