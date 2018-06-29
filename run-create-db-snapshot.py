@@ -13,7 +13,8 @@ def lambda_handler():
 	git clone https://github.com/dixonaws/rds-snapshot-automation /tmp/rds-snapshot-automation
 	
 	# install python dependencies
-	pip3 install -r /tmp/rds-snapshot-automation/requirements.txt
+	pip3 install boto3
+	pip3 install ec2_metadata
 
 	# run the program (terminates the instance when finished)
 	python3 /tmp/rds-snapshot-automation/create-db-snapshot.py		
