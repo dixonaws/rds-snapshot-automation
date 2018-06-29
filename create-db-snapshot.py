@@ -66,7 +66,7 @@ def main():
         InstanceIds=[
             strInstanceId,
         ],
-        DryRun=True
+        DryRun=False
     )
 
     print(terminationResponse)
