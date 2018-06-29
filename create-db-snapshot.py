@@ -40,6 +40,7 @@ def logToCloudWatch(CloudWatchLogsClient, aMessage):
 
 def main():
     # todo: parse command line arguments from userdata
+    # todo: add time elapsed to logstream
 
     print("rds-snapshot-automation, v1.0")
 
