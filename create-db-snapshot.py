@@ -67,9 +67,10 @@ def main():
 	strSnapshotId = strDbInstanceId + '-' + strEpoch
 	strLogGroupName = "rds-snapshot-automation-logs"
 	strLogStreamName = strDbInstanceId
+	strRegion='us-east-1'
 
-	rds_client = boto3.client('rds')
-	cloudwatch_client = boto3.client('logs')
+	rds_client = boto3.client('rds', region_name=strRegion)
+	cloudwatch_client = boto3.client('logs', region_name=strRegion)
 
 	jsonResponseCreateDBSnapshot = ""
 

@@ -17,7 +17,7 @@ def lambda_handler():
 	pip3 install ec2_metadata
 
 	# run the program (terminates the instance when finished)
-	python3 /tmp/rds-snapshot-automation/create-db-snapshot.py		
+	python3 /tmp/rds-snapshot-automation/create-db-snapshot.py hmi-poc		
 	'''
 
 	run_instances_response=ec2_client.run_instances(
