@@ -133,6 +133,7 @@ def main():
 		print(terminationResponse)
 
 	except ClientError as ce:
+		print(ClientError)
 		strInstanceId = "testing_non_ec2"
 		pass
 
