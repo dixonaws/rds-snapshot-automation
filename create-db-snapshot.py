@@ -1,76 +1,147 @@
 import boto3
+from time import sleep
 import time
-from ec2_metadata import ec2_metadata
+import argparse
+from botocore.exceptions import ClientError
+import ec2_metadata
 
-def logToCloudWatch(CloudWatchLogsClient, aMessage):
-    # cloudwatchlogs expects unix time * 1000, otherwise throws TooOldLogEventsException
-    intTime = int(time.time()) * 1000
 
-    try:
-        strInstanceId=ec2_metadata.instance_id
-    except Exception:
-        strInstanceId="testing_non_ec2"
-        pass
+def logToCloudWatch(CloudWatchLogsClient, aLogGroupName, aLogStreamName, aMessage):
+	# cloudwatchlogs expects unix time * 1000, otherwise throws TooOldLogEventsException
+	intTime = int(time.time()) * 1000
 
-    # get the next token from CloudWatch so that we can put event in the log stream
-    response = CloudWatchLogsClient.describe_log_streams(
-        logGroupName='rds-snapshot-automation-logs'
-    )
+	try:
+		strInstanceId = ec2_metadata.instance_id
+	except Exception:
+		strInstanceId = "testing_non_ec2"
+		pass
 
-    strNextToken = response['logStreams'][0]['uploadSequenceToken']
+	# get the next token from CloudWatch so that we can put event in the log stream
+	describe_log_streams_response = CloudWatchLogsClient.describe_log_streams(
+		logGroupName='rds-snapshot-automation-logs'
+	)
 
-    # log to CloudWatch
-    strMessage = strInstanceId + ': ' + aMessage
+	# log to CloudWatch
+	strMessage = strInstanceId + ': ' + aMessage
 
-    response = CloudWatchLogsClient.put_log_events(
-        logGroupName='rds-snapshot-automation-logs',
-        logStreamName='rds-instance',
-        logEvents=[
-            {
-                'timestamp': intTime,
-                'message': strMessage
-            },
-        ],
+	# if we get a KeyError exception, this must be the first time we are logging to this log stream
+	try:
+		strNextToken = describe_log_streams_response['logStreams'][0]['uploadSequenceToken']
 
-        sequenceToken=strNextToken
-    )
+		put_log_events_response = CloudWatchLogsClient.put_log_events(
+			logGroupName=aLogGroupName,
+			logStreamName=aLogStreamName,
+			logEvents=[
+				{
+					'timestamp': intTime,
+					'message': strMessage
+				},
+			],
 
-    return(response)
+			sequenceToken=strNextToken
+		)
+
+	except KeyError:
+		put_log_events_response = CloudWatchLogsClient.put_log_events(
+			logGroupName=aLogGroupName,
+			logStreamName=aLogStreamName,
+			logEvents=[
+				{
+					'timestamp': intTime,
+					'message': strMessage
+				}
+			]
+		)
+
+	return (put_log_events_response)
 
 
 def main():
-    # todo: parse command line arguments from userdata
-    # todo: add time elapsed to logstream
+	parser = argparse.ArgumentParser(
+		description='Takes a snapshot of a given RDS instance and logs progress to a Cloudwatch stream called rds-snapshot-automation. The resulting snapshot-id will be a comination of the RDS Instance name and the current time (Unix epoch)')
+	parser.add_argument('RdsDbInstanceId', help='The RDS instance to snapshot')
+	args = parser.parse_args()
 
-    print("rds-snapshot-automation, v1.0")
+	strEpoch = str(int(time.time()))
+	strDbInstanceId = args.RdsDbInstanceId
+	strSnapshotId = strDbInstanceId + '-' + strEpoch
+	strLogGroupName = "rds-snapshot-automation-logs"
+	strLogStreamName = strDbInstanceId
 
-    CloudWatchLogsClient = boto3.client('logs', region_name='us-east-1')
+	rds_client = boto3.client('rds')
+	cloudwatch_client = boto3.client('logs')
 
-    # log when we start the script
-    logToCloudWatch(CloudWatchLogsClient, 'Started rds-snapshot-automation script')
+	jsonResponseCreateDBSnapshot = ""
 
-    # todo: create an RDS snapshot of specified instances
+	print("Taking snapshot of instance: " + strDbInstanceId)
+	print("Snapshot ID will be " + strSnapshotId)
 
-    # log when we're finished
-    logToCloudWatch(CloudWatchLogsClient, 'rds-snapshot-automation script ended, terminating instance...')
+	strMessage = "Taking snapshot of instance: " + strDbInstanceId + ", " + "Snapshot ID will be " + strSnapshotId
+	logToCloudWatch(cloudwatch_client, strLogGroupName, strLogStreamName, strMessage)
 
-    # terminate the instance we're running on
-    try:
-        strInstanceId=ec2_metadata.instance_id
-    except Exception:
-        strInstanceId="testing_non_ec2"
-        pass
+	try:
+		jsonResponseCreateDBSnapshot = rds_client.create_db_snapshot(DBInstanceIdentifier=strDbInstanceId,
+																	 DBSnapshotIdentifier=strSnapshotId)
+	except ClientError as e:
+		print(e.response['Error']['Message'])
 
-    Ec2Client=boto3.client('ec2', region_name='us-east-1')
+		exit(1)
 
-    terminationResponse = Ec2Client.terminate_instances(
-        InstanceIds=[
-            strInstanceId,
-        ],
-        DryRun=False
-    )
+	print(jsonResponseCreateDBSnapshot)
 
-    print(terminationResponse)
+	jsonDescribeDBSnapshots = rds_client.describe_db_snapshots(DBSnapshotIdentifier=strSnapshotId)
+	strStatus = jsonDescribeDBSnapshots['DBSnapshots'][0]['Status']
+	intPercentProgress = jsonDescribeDBSnapshots['DBSnapshots'][0]['PercentProgress']
+
+	print("Snapshot status: " + strStatus)
+
+	# poll the rds API for progress every 10 seconds while the status is 'creating'
+	# status will return 'available' when the snapshot is finished
+	while (strStatus == 'creating'):
+		jsonDescribeDBSnapshots = rds_client.describe_db_snapshots(DBSnapshotIdentifier=strSnapshotId)
+
+		strMessage = "Snapshot " + strSnapshotId + " - " + strStatus + ", progress: " + str(intPercentProgress)
+		print(strMessage)
+		logToCloudWatch(cloudwatch_client, strLogGroupName, strLogStreamName, strMessage)
+
+		intPercentProgress = jsonDescribeDBSnapshots['DBSnapshots'][0]['PercentProgress']
+		strStatus = jsonDescribeDBSnapshots['DBSnapshots'][0]['Status']
+
+		sleep(10)
+
+	# print a final message on completion
+	strMessage = "Snapshot " + strSnapshotId + " - " + strStatus + ", progress: " + str(intPercentProgress)
+	print(strMessage)
+	logToCloudWatch(cloudwatch_client, strLogGroupName, strLogStreamName, strMessage)
+
+	# terminate the instance we're running on
+	Ec2Client = boto3.client('ec2', region_name='us-east-1')
+
+	print("Shutting down temporary EC2 instance... ")
+
+	try:
+		strInstanceId = ec2_metadata.instance_id
+
+		terminationResponse = Ec2Client.terminate_instances(
+			InstanceIds=[
+				strInstanceId,
+			],
+			DryRun=False
+		)
+
+		print(terminationResponse)
+
+	except ClientError as ce:
+		strInstanceId = "testing_non_ec2"
+		pass
+
+	except Exception as e:
+		strInstanceId = "testing_non_ec2"
+		pass
+
+	strMessage = "Terminated instance " + strInstanceId
+	print(strMessage)
+	logToCloudWatch(cloudwatch_client, strLogGroupName, strLogStreamName, strMessage)
 
 
 main()
