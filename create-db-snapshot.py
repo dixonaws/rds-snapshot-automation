@@ -67,7 +67,7 @@ def main():
 	strSnapshotId = strDbInstanceId + '-' + strEpoch
 	strLogGroupName = "rds-snapshot-automation-logs"
 	strLogStreamName = strDbInstanceId
-	strRegion='us-east-1'
+	strRegion = 'us-east-1'
 
 	rds_client = boto3.client('rds', region_name=strRegion)
 	cloudwatch_client = boto3.client('logs', region_name=strRegion)
@@ -120,6 +120,17 @@ def main():
 
 	print("Shutting down temporary EC2 instance... ")
 
+	strInstanceId = ec2_metadata.instance_id
+
+	terminationResponse = Ec2Client.terminate_instances(
+		InstanceIds=[
+			strInstanceId,
+		],
+		DryRun=False
+	)
+
+	print(terminationResponse)
+
 	try:
 		strInstanceId = ec2_metadata.instance_id
 
@@ -138,6 +149,7 @@ def main():
 		pass
 
 	except Exception as e:
+		print("Caught exception")
 		strInstanceId = "testing_non_ec2"
 		pass
 
