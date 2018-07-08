@@ -116,7 +116,7 @@ def main():
 	logToCloudWatch(cloudwatch_client, strLogGroupName, strLogStreamName, strMessage)
 
 	# terminate the instance we're running on
-	Ec2Client = boto3.client('ec2', region_name='us-east-1')
+	Ec2Client = boto3.client('ec2', region_name=strRegion)
 
 	print("Shutting down temporary EC2 instance... ")
 
