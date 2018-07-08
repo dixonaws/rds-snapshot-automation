@@ -3,7 +3,7 @@ from time import sleep
 import time
 import argparse
 from botocore.exceptions import ClientError
-import ec2_metadata
+from ec2_metadata import ec2_metadata
 
 
 def logToCloudWatch(CloudWatchLogsClient, aLogGroupName, aLogStreamName, aMessage):
